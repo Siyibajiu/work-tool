@@ -1348,15 +1348,14 @@ struct TimestampView: View {
                         TextField("如 yyyy-MM-dd HH:mm:ss", text: $customFormat)
                             .textFieldStyle(.roundedBorder)
                     }
-                    if !templateValid {
+                    // 模板错误紧贴模板输入展示；为空时不提示（避免切到自定义立刻报红）
+                    if formatChoice == Self.presets.count, !customFormat.isEmpty, !templateValid {
                         Text(ToolError.invalidFormatTemplate.userMessage)
                             .foregroundStyle(.red)
                     }
-                    if !timestampInput.isEmpty {
-                        OutputSection(
-                            title: "转换结果",
-                            result: templateValid ? converted : .failure(.invalidFormatTemplate)
-                        )
+                    // 模板非法时不再显示转换结果区，避免错误重复出现
+                    if !timestampInput.isEmpty, templateValid {
+                        OutputSection(title: "转换结果", result: converted)
                     }
                 }
 
