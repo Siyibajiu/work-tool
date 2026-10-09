@@ -25,9 +25,10 @@ final class MD5ToolTests: XCTestCase {
     }
 
     func testMultilineInput() {
-        // 多行文本也能计算（与单行拼接结果一致即可验证不崩溃且确定性）
-        let a = MD5Tool.hex("line1\nline2")
-        XCTAssertEqual(a, MD5Tool.hex("line1\nline2"))
-        XCTAssertEqual(a.count, 32)
+        XCTAssertEqual(MD5Tool.hex("line1\nline2"), "ee5a58024a155466b43bc559d953e018")
+    }
+
+    func testChineseInput() {
+        XCTAssertEqual(MD5Tool.hex("中文"), "a7bac2239fcdcb3a067903d8077c4a07")
     }
 }
