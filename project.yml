@@ -1,0 +1,41 @@
+name: DevToolbox
+options:
+  bundleIdPrefix: com.siyibajiu
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+targets:
+  DevToolbox:
+    type: application
+    platform: macOS
+    sources:
+      - DevToolbox
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.siyibajiu.devtoolbox
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: true
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
+  DevToolboxTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - DevToolboxTests
+    dependencies:
+      - target: DevToolbox
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.siyibajiu.devtoolbox.tests
+        GENERATE_INFOPLIST_FILE: true
+schemes:
+  DevToolbox:
+    build:
+      targets:
+        DevToolbox: all
+    test:
+      targets:
+        - DevToolboxTests
