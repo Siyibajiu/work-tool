@@ -60,7 +60,7 @@ DevToolbox/
 - 时区下拉：本地 / UTC，转换结果跟随所选时区
 - 格式模板：预置 `yyyy-MM-dd HH:mm:ss`、`yyyy/MM/dd HH:mm`、
   `yyyyMMddHHmmss` 三档 + 自定义输入（DateFormatter 语法）；模板非法时
-  红字提示并回退默认格式
+  红字提示并隐藏转换结果（不回退默认格式，避免错误格式混淆）
 
 ### 2. JWT 解析
 
@@ -117,7 +117,7 @@ DevToolbox/
 ## 构建与分发
 
 - 构建：Xcode 或 `xcodebuild -scheme DevToolbox -configuration Release`
-- 架构：arm64（Apple Silicon 原生）
+- 架构：通用二进制（arm64 原生 + x86_64），Apple Silicon 上原生运行
 - 打包：Release 构建 → ad-hoc 签名 → zip 压缩 `.app` 发出
 - 已知限制：朋友首次打开需右键 → 打开（无付费开发者账号无法公证），
   写入 README 说明

@@ -14,7 +14,7 @@ macOS 开发者工具箱（Apple Silicon 原生），五个高频小工具，全
 
 ## 系统要求
 
-- macOS 14 (Sonoma) 及以上，Apple Silicon (arm64)
+- macOS 14 (Sonoma) 及以上，通用二进制（arm64 原生 + x86_64，Intel Mac 也可运行）
 - 开发需要 Xcode 15+ 与 [XcodeGen](https://github.com/yonaskolb/XcodeGen)（`brew install xcodegen`）
 
 ## 开发
