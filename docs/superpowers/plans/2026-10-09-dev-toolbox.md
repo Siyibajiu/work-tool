@@ -814,6 +814,41 @@ final class JWTToolTests: XCTestCase {
         XCTAssertEqual(map["exp"], "2100-01-01 00:00:00")
     }
 
+    func testExpExactlyNowIsExpired() {
+        // RFC 7519：now >= exp 即过期
+        let token = makeToken(
+            header: #"{"alg":"HS256"}"#,
+            payload: #"{"exp":1759977600}"#
+        )
+        let jwt = try JWTTool.parse(token, now: now, timeZone: utc).get()
+        XCTAssertTrue(jwt.expired)
+        XCTAssertEqual(jwt.expiryText, "已过期 0 秒")
+    }
+
+    func testHugeExpDoesNotCrash() {
+        // 恶意/畸形 token：exp=1e300 不得让 Int() 溢出崩溃，天数封顶 1e9
+        let token = makeToken(
+            header: #"{"alg":"HS256"}"#,
+            payload: #"{"exp":1e300}"#
+        )
+        let jwt = try JWTTool.parse(token, now: now, timeZone: utc).get()
+        XCTAssertFalse(jwt.expired)
+        XCTAssertEqual(jwt.expiryText, "剩余 1000000000 天")
+        // 超出 |v|>1e12 的荒谬声明值不生成时间注释
+        XCTAssertTrue(jwt.timeAnnotations.isEmpty)
+    }
+
+    func testStringExpIsCoerced() {
+        // 部分发行方把 exp 写成字符串，不能误显示为"永不过期"
+        let token = makeToken(
+            header: #"{"alg":"HS256"}"#,
+            payload: #"{"exp":"4102444800"}"#
+        )
+        let jwt = try JWTTool.parse(token, now: now, timeZone: utc).get()
+        XCTAssertFalse(jwt.expired)
+        XCTAssertEqual(jwt.expiryText, "剩余 27111 天")
+    }
+
     func testWrongSegmentCountFails() {
         let result = JWTTool.parse("a.b", now: now, timeZone: utc)
         XCTAssertEqual(
@@ -895,26 +930,26 @@ enum JWTTool {
             return .failure(.invalidJWT("JSON 解析失败"))
         }
 
-        // 时间字段注释
+        // 时间字段注释（数值型声明才注释；超出来世（|v|>1e12 秒）的荒谬值跳过）
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.timeZone = timeZone
         formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
         var annotations: [TimeAnnotation] = []
         for key in ["iat", "nbf", "exp"] {
-            if let value = payloadObj[key] as? Double {
+            if let value = claimNumber(payloadObj[key]), value.magnitude <= 1e12 {
                 annotations.append(
                     TimeAnnotation(key: key, readable: formatter.string(from: Date(timeIntervalSince1970: value)))
                 )
             }
         }
 
-        // 过期状态
+        // 过期状态（RFC 7519：now >= exp 即视为过期）
         var expired = false
         var expiryText: String? = nil
-        if let exp = payloadObj["exp"] as? Double {
+        if let exp = claimNumber(payloadObj["exp"]) {
             let expDate = Date(timeIntervalSince1970: exp)
-            expired = expDate < now
+            expired = expDate <= now
             expiryText = (expired ? "已过期 " : "剩余 ") + humanize(abs(expDate.timeIntervalSince(now)))
         }
 
@@ -943,19 +978,26 @@ enum JWTTool {
     private static func prettyJSON(_ obj: Any) -> String? {
         guard let data = try? JSONSerialization.data(
             withJSONObject: obj,
-            options: [.prettyPrinted, .sortedKeys]
+            options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
         ), let str = String(data: data, encoding: .utf8) else {
             return nil
         }
         return str
     }
 
+    /// 声明值取数：Double 直取，数字字符串（如 "4102444800"）也接受
+    private static func claimNumber(_ value: Any?) -> Double? {
+        if let d = value as? Double { return d }
+        if let s = value as? String { return Double(s) }
+        return nil
+    }
+
+    /// 人性化时长；全程在 Double 空间比较，天数封顶 1e9，杜绝 Int 溢出崩溃
     private static func humanize(_ interval: TimeInterval) -> String {
-        let seconds = Int(interval)
-        if seconds < 60 { return "\(seconds) 秒" }
-        if seconds < 3600 { return "\(seconds / 60) 分钟" }
-        if seconds < 86400 { return "\(seconds / 3600) 小时" }
-        return "\(seconds / 86400) 天"
+        if interval < 60 { return "\(Int(interval)) 秒" }
+        if interval < 3600 { return "\(Int(interval / 60)) 分钟" }
+        if interval < 86400 { return "\(Int(interval / 3600)) 小时" }
+        return "\(Int(min(interval / 86400, 1e9))) 天"
     }
 }
 ```
