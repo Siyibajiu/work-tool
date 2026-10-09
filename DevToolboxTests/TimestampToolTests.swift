@@ -53,6 +53,20 @@ final class TimestampToolTests: XCTestCase {
         XCTAssertEqual(ts.millis, "1770000000000")
     }
 
+    func testTimestampStringsPre1970() {
+        // Int64 承载负值：1970 前的日期不得崩溃
+        let ts = TimestampTool.timestampStrings(from: Date(timeIntervalSince1970: -86400))
+        XCTAssertEqual(ts.seconds, "-86400")
+        XCTAssertEqual(ts.millis, "-86400000")
+    }
+
+    func testNegativeTimestampInputFails() {
+        XCTAssertEqual(
+            TimestampTool.date(fromTimestamp: "-86400"),
+            .failure(.invalidTimestamp)
+        )
+    }
+
     // MARK: - 格式模板校验
 
     func testValidTemplates() {

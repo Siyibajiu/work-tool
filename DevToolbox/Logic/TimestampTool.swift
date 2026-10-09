@@ -20,10 +20,10 @@ enum TimestampTool {
         return .success(Date(timeIntervalSince1970: seconds))
     }
 
-    /// Date → (秒级字符串, 毫秒级字符串)
+    /// Date → (秒级字符串, 毫秒级字符串)；Int64 承载负值，1970 前的日期安全
     static func timestampStrings(from date: Date) -> (seconds: String, millis: String) {
-        let seconds = UInt64(date.timeIntervalSince1970)
-        let millis = UInt64(date.timeIntervalSince1970 * 1000)
+        let seconds = Int64(date.timeIntervalSince1970.rounded(.down))
+        let millis = Int64((date.timeIntervalSince1970 * 1000).rounded())
         return (String(seconds), String(millis))
     }
 
