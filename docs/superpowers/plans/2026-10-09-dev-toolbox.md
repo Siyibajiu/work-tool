@@ -477,6 +477,10 @@ enum UnicodeTool {
                     return .failure(.invalidUnicodeSequence("U+\(hex)"))
                 }
                 result.unicodeScalars.append(scalar)
+                // 跳过 U+ 序列后的空白分隔符（"U+4F60 U+597D" → "你好"）
+                while j < chars.count, chars[j] == " " || chars[j] == "\t" {
+                    j += 1
+                }
                 i = j
                 continue
             }
