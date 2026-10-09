@@ -1184,14 +1184,19 @@ struct URLView: View {
                     Button("编码") {
                         output = .success(URLTool.encode(input))
                     }
+                    .disabled(input.isEmpty)
+                    .buttonStyle(.bordered)
                     Button("解码") {
                         output = URLTool.decode(input)
                     }
+                    .disabled(input.isEmpty)
+                    .buttonStyle(.bordered)
                     if case .success(let text)? = output {
                         Button("↑ 交换到输入") {
                             input = text
                             output = nil
                         }
+                        .buttonStyle(.bordered)
                     }
                     Spacer()
                 }
@@ -1240,14 +1245,19 @@ struct UnicodeView: View {
                     Button("中文 → Unicode") {
                         output = .success(UnicodeTool.toUnicode(input))
                     }
+                    .disabled(input.isEmpty)
+                    .buttonStyle(.bordered)
                     Button("Unicode → 中文") {
                         output = UnicodeTool.toChinese(input)
                     }
+                    .disabled(input.isEmpty)
+                    .buttonStyle(.bordered)
                     if case .success(let text)? = output {
                         Button("↑ 交换到输入") {
                             input = text
                             output = nil
                         }
+                        .buttonStyle(.bordered)
                     }
                     Spacer()
                 }
