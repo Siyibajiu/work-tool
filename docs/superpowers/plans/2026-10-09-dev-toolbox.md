@@ -1421,6 +1421,9 @@ struct JWTView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 InputSection(title: "粘贴 JWT Token", text: $token)
+                Text("签名未验证，内容可被伪造，请勿据此信任 Token")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 switch parsed {
                 case nil:
                     Text("输入 token 后自动解析")
