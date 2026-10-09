@@ -601,6 +601,20 @@ final class TimestampToolTests: XCTestCase {
         XCTAssertEqual(ts.millis, "1770000000000")
     }
 
+    func testTimestampStringsPre1970() {
+        // Int64 承载负值：1970 前的日期不得崩溃
+        let ts = TimestampTool.timestampStrings(from: Date(timeIntervalSince1970: -86400))
+        XCTAssertEqual(ts.seconds, "-86400")
+        XCTAssertEqual(ts.millis, "-86400000")
+    }
+
+    func testNegativeTimestampInputFails() {
+        XCTAssertEqual(
+            TimestampTool.date(fromTimestamp: "-86400"),
+            .failure(.invalidTimestamp)
+        )
+    }
+
     // MARK: - 格式模板校验
 
     func testValidTemplates() {
@@ -678,10 +692,10 @@ enum TimestampTool {
         return .success(Date(timeIntervalSince1970: seconds))
     }
 
-    /// Date → (秒级字符串, 毫秒级字符串)
+    /// Date → (秒级字符串, 毫秒级字符串)；Int64 承载负值，1970 前的日期安全
     static func timestampStrings(from date: Date) -> (seconds: String, millis: String) {
-        let seconds = UInt64(date.timeIntervalSince1970)
-        let millis = UInt64(date.timeIntervalSince1970 * 1000)
+        let seconds = Int64(date.timeIntervalSince1970.rounded(.down))
+        let millis = Int64((date.timeIntervalSince1970 * 1000).rounded())
         return (String(seconds), String(millis))
     }
 
