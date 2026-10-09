@@ -62,6 +62,41 @@ final class JWTToolTests: XCTestCase {
         XCTAssertEqual(map["exp"], "2100-01-01 00:00:00")
     }
 
+    func testExpExactlyNowIsExpired() throws {
+        // RFC 7519：now >= exp 即过期
+        let token = makeToken(
+            header: #"{"alg":"HS256"}"#,
+            payload: #"{"exp":1759977600}"#
+        )
+        let jwt = try JWTTool.parse(token, now: now, timeZone: utc).get()
+        XCTAssertTrue(jwt.expired)
+        XCTAssertEqual(jwt.expiryText, "已过期 0 秒")
+    }
+
+    func testHugeExpDoesNotCrash() throws {
+        // 恶意/畸形 token：exp=1e300 不得让 Int() 溢出崩溃，天数封顶 1e9
+        let token = makeToken(
+            header: #"{"alg":"HS256"}"#,
+            payload: #"{"exp":1e300}"#
+        )
+        let jwt = try JWTTool.parse(token, now: now, timeZone: utc).get()
+        XCTAssertFalse(jwt.expired)
+        XCTAssertEqual(jwt.expiryText, "剩余 1000000000 天")
+        // 超出 |v|>1e12 的荒谬声明值不生成时间注释
+        XCTAssertTrue(jwt.timeAnnotations.isEmpty)
+    }
+
+    func testStringExpIsCoerced() throws {
+        // 部分发行方把 exp 写成字符串，不能误显示为"永不过期"
+        let token = makeToken(
+            header: #"{"alg":"HS256"}"#,
+            payload: #"{"exp":"4102444800"}"#
+        )
+        let jwt = try JWTTool.parse(token, now: now, timeZone: utc).get()
+        XCTAssertFalse(jwt.expired)
+        XCTAssertEqual(jwt.expiryText, "剩余 27111 天")
+    }
+
     func testWrongSegmentCountFails() {
         let result = JWTTool.parse("a.b", now: now, timeZone: utc)
         XCTAssertEqual(
