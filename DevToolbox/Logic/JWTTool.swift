@@ -91,10 +91,11 @@ enum JWTTool {
         return str
     }
 
-    /// 声明值取数：Double 直取，数字字符串（如 "4102444800"）也接受
+    /// 声明值取数：Double 直取，数字字符串（如 "4102444800"）也接受；
+    /// 拒绝非有限值（Double("nan") 会解析成功，流入 humanize 会崩溃）
     private static func claimNumber(_ value: Any?) -> Double? {
-        if let d = value as? Double { return d }
-        if let s = value as? String { return Double(s) }
+        if let d = value as? Double, d.isFinite { return d }
+        if let s = value as? String, let d = Double(s), d.isFinite { return d }
         return nil
     }
 

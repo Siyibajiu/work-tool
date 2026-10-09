@@ -97,6 +97,17 @@ final class JWTToolTests: XCTestCase {
         XCTAssertEqual(jwt.expiryText, "剩余 27111 天")
     }
 
+    func testNaNStringExpDoesNotCrash() throws {
+        // Double("nan") 解析成功，流入 humanize 的 Int(NaN) 会崩溃；isFinite 守卫拦截
+        let token = makeToken(
+            header: #"{"alg":"HS256"}"#,
+            payload: #"{"exp":"nan"}"#
+        )
+        let jwt = try JWTTool.parse(token, now: now, timeZone: utc).get()
+        XCTAssertNil(jwt.expiryText)
+        XCTAssertFalse(jwt.expired)
+    }
+
     func testWrongSegmentCountFails() {
         let result = JWTTool.parse("a.b", now: now, timeZone: utc)
         XCTAssertEqual(
