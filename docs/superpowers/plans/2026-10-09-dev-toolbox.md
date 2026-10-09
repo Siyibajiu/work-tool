@@ -849,6 +849,17 @@ final class JWTToolTests: XCTestCase {
         XCTAssertEqual(jwt.expiryText, "剩余 27111 天")
     }
 
+    func testNaNStringExpDoesNotCrash() throws {
+        // Double("nan") 解析成功，流入 humanize 的 Int(NaN) 会崩溃；isFinite 守卫拦截
+        let token = makeToken(
+            header: #"{"alg":"HS256"}"#,
+            payload: #"{"exp":"nan"}"#
+        )
+        let jwt = try JWTTool.parse(token, now: now, timeZone: utc).get()
+        XCTAssertNil(jwt.expiryText)
+        XCTAssertFalse(jwt.expired)
+    }
+
     func testWrongSegmentCountFails() {
         let result = JWTTool.parse("a.b", now: now, timeZone: utc)
         XCTAssertEqual(
@@ -985,10 +996,11 @@ enum JWTTool {
         return str
     }
 
-    /// 声明值取数：Double 直取，数字字符串（如 "4102444800"）也接受
+    /// 声明值取数：Double 直取，数字字符串（如 "4102444800"）也接受；
+    /// 拒绝非有限值（Double("nan") 会解析成功，流入 humanize 会崩溃）
     private static func claimNumber(_ value: Any?) -> Double? {
-        if let d = value as? Double { return d }
-        if let s = value as? String { return Double(s) }
+        if let d = value as? Double, d.isFinite { return d }
+        if let s = value as? String, let d = Double(s), d.isFinite { return d }
         return nil
     }
 
