@@ -1,16 +1,23 @@
 import SwiftUI
 
-/// 复制按钮：点击后写入系统剪贴板，文字变「已复制 ✓」1.5 秒
+/// 复制按钮：点击后写入系统剪贴板，文字变「已复制 ✓」1.5 秒；
+/// 用 token 防止连续点击时旧计时器提前清除新反馈
 struct CopyButton: View {
     let text: String
     @State private var copied = false
+    @State private var copyToken = UUID()
 
     var body: some View {
         Button {
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(text, forType: .string)
             copied = true
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { copied = false }
+            let token = UUID()
+            copyToken = token
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                guard copyToken == token else { return }
+                copied = false
+            }
         } label: {
             Text(copied ? "已复制 ✓" : "复制")
         }
@@ -18,7 +25,7 @@ struct CopyButton: View {
     }
 }
 
-/// 多行输入区：标题 + 等宽 TextEditor
+/// 多行输入区：标题 + 等宽 TextEditor（限高，内部滚动，防止外层页面被撑爆）
 struct InputSection: View {
     let title: String
     @Binding var text: String
@@ -28,7 +35,7 @@ struct InputSection: View {
             Text(title).font(.headline)
             TextEditor(text: $text)
                 .font(.system(.body, design: .monospaced))
-                .frame(minHeight: 80)
+                .frame(minHeight: 80, maxHeight: 220)
                 .padding(4)
                 .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
                 .overlay(RoundedRectangle(cornerRadius: 8).stroke(.separator))
