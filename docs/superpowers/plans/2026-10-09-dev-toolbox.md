@@ -381,7 +381,8 @@ final class UnicodeToolTests: XCTestCase {
     }
 
     func testToChineseUppercaseUForm() {
-        XCTAssertEqual(UnicodeTool.toChinese("U+4F60 U+597D"), .success("你好"))
+        // 空格原样保留：任何丢空格的启发式都会破坏往返无损性
+        XCTAssertEqual(UnicodeTool.toChinese("U+4F60 U+597D"), .success("你 好"))
     }
 
     func testToChineseEmojiLongForm() {
@@ -406,11 +407,42 @@ final class UnicodeToolTests: XCTestCase {
         )
     }
 
+    func testShortUPlusTreatedAsPlainText() {
+        // U+ 后不足 4 位十六进制视为普通文本，避免误伤 "CPU+2" 之类日常输入
+        XCTAssertEqual(UnicodeTool.toChinese("CPU+2"), .success("CPU+2"))
+        XCTAssertEqual(UnicodeTool.toChinese("U+FFF"), .success("U+FFF"))
+    }
+
+    func testLoneSurrogateFails() {
+        XCTAssertEqual(
+            UnicodeTool.toChinese("\\ud800"),
+            .failure(.invalidUnicodeSequence("\\ud800"))
+        )
+    }
+
+    func testAboveMaxScalarFails() {
+        XCTAssertEqual(
+            UnicodeTool.toChinese("U+110000"),
+            .failure(.invalidUnicodeSequence("U+110000"))
+        )
+    }
+
     // MARK: - 往返
 
     func testRoundTrip() {
         let original = "你好 world 😀"
         XCTAssertEqual(UnicodeTool.toChinese(UnicodeTool.toUnicode(original)), .success(original))
+    }
+
+    func testRoundTripPreservesSpaces() {
+        XCTAssertEqual(
+            UnicodeTool.toChinese(UnicodeTool.toUnicode("😀 😀")),
+            .success("😀 😀")
+        )
+        XCTAssertEqual(
+            UnicodeTool.toChinese(UnicodeTool.toUnicode("😀 world")),
+            .success("😀 world")
+        )
     }
 }
 ```
@@ -463,7 +495,7 @@ enum UnicodeTool {
                 i += 6
                 continue
             }
-            // U+XXXX（4~6 位）
+            // U+XXXX（4~6 位）；不足 4 位视为普通文本，避免误伤 "CPU+2" 之类日常输入
             if chars[i] == "U", i + 1 < chars.count, chars[i + 1] == "+" {
                 var hex = ""
                 var j = i + 2
@@ -471,18 +503,17 @@ enum UnicodeTool {
                     hex.append(chars[j])
                     j += 1
                 }
-                guard hex.count >= 4,
-                      let value = UInt32(hex, radix: 16),
-                      let scalar = Unicode.Scalar(value) else {
+                if hex.count >= 4, let value = UInt32(hex, radix: 16),
+                   let scalar = Unicode.Scalar(value) {
+                    result.unicodeScalars.append(scalar)
+                    i = j
+                    continue
+                }
+                if hex.count >= 4 {
+                    // 4~6 位十六进制但标量非法（如 U+110000、U+D800 孤立代理项）
                     return .failure(.invalidUnicodeSequence("U+\(hex)"))
                 }
-                result.unicodeScalars.append(scalar)
-                // 跳过 U+ 序列后的空白分隔符（"U+4F60 U+597D" → "你好"）
-                while j < chars.count, chars[j] == " " || chars[j] == "\t" {
-                    j += 1
-                }
-                i = j
-                continue
+                // 不足 4 位：落入下方普通文本原样保留
             }
             result.append(chars[i])
             i += 1
